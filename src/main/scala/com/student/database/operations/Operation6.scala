@@ -1,7 +1,8 @@
 package com.student.database.operations
 
 import data.models._
-import data.constants.Constants._
+import data.constants.CassandraConstants._
+import data.constants.OperationConstants._
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{Dataset, SparkSession}
 import org.apache.spark.sql.functions._
@@ -14,8 +15,8 @@ object Operation6 {
                          classes: Map[Int, String],
                          subjectsGroupMapper: Map[Int, List[Int]]): Unit = {
 
-    val physicsId = subjects.find(_._2 == "Physics").get._1
-    val classId = classes.find(_._2 == "XII").get._1
+    val physicsId = subjects.find(_._2 == subjectPhysics).get._1
+    val classId = classes.find(_._2 == classXII).get._1
     val groupIds = getGroupsId(physicsId,subjectsGroupMapper)
 
     val physicsMarksGrouped = getMarksForASubject(spark,logger,classId,groupIds,physicsId).cache()
@@ -26,28 +27,26 @@ object Operation6 {
 
     val physicsOverallAverage = physicsMarksGrouped.map {
       case Mark(Some(groupId), Some(classId), Some(subjectId), Some(studentId), Some(marks)) => StudentAverage(studentId, marks.values.map(value => value.getOrElse(0.0)).sum / marks.size)
-    }.filter(data => data.average >50)
+    }.filter(data => data.average > overallAverage)
 
     val test1OverallAverageMarks = test1Marks.groupByKey(_.student_id).agg(avg("mark").as("average").as[Double])
-      .select($"key".as("student_id").as[Int],$"average".as[Double])
-      .filter(data => data._2 > 50)
-      .as[StudentAverage]
+      .filter(data => data._2 > test1OverallAverage)
+      .map(l => StudentAverage(l._1,l._2))
+
 
     val graceMarkEligibleStudentsIdList = physicsOverallAverage.joinWith(test1OverallAverageMarks,
       physicsOverallAverage.col("student_id")===test1OverallAverageMarks.col("student_id"),"inner")
       .select($"_1.student_id".as[Int])
-      .collect()
-      .toList
+      .collect().toList
 
     val updatedPhysicsMarksGrouped = physicsMarksGrouped.map {
-      case Mark(group_id, class_id, subject_id, Some(student_id), Some(test_marks)) if graceMarkEligibleStudentsIdList.contains(student_id) => {
+      case Mark(group_id, class_id, subject_id, Some(student_id), Some(test_marks)) if graceMarkEligibleStudentsIdList.contains(student_id) =>
         val testMarks = test_marks.map {
           case (key, Some(value)) if key == 1 && value < 95 => (key, Option(value + 5))
-          case (key, Some(value)) if key == 1 && value <= 95 => (key, Option(value + 5))
+          case (key, Some(value)) if key == 1 && value <= 95 => (key, Option(100.toDouble))
           case (key, value) => (key, value)
         }
         Mark(group_id, class_id, subject_id, Option(student_id), Option(testMarks))
-      }
       case Mark(group_id, class_id, subject_id, student_id, test_marks) => Mark(group_id, class_id, subject_id, student_id, test_marks)
     }
 
@@ -63,7 +62,7 @@ object Operation6 {
     spark.read.format("org.apache.spark.sql.cassandra")
       .options(Map("keyspace" -> keySpaceName, "table" -> passPercentageTable))
       .load
-      .where(s"class_id = ${classId} and subject_id=${physicsId}")
+      .where(s"class_id = $classId and subject_id=$physicsId")
       .as[PassPercentage].show()
 
     println("Pass percentage in Physics after grace mark: ")

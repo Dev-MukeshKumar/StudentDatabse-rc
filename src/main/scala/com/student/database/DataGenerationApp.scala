@@ -2,7 +2,7 @@ package com.student.database
 
 import data.generate.MainTable._
 import data.generate.MetaTable._
-import data.constants.Constants._
+import data.constants.CassandraConstants._
 import org.apache.log4j.Logger
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession

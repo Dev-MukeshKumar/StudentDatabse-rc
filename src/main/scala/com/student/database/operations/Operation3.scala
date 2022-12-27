@@ -1,7 +1,8 @@
 package com.student.database.operations
 
 import data.models._
-import data.constants.Constants._
+import data.constants.CassandraConstants._
+import data.constants.OperationConstants._
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{Dataset, SparkSession, functions}
 
@@ -40,9 +41,7 @@ object Operation3 {
       .select($"key._1".as("subject_id").as[Int],$"key._2".as("class_id").as[Int],$"student_count".as[Int])
       .as[StudentCountSubjectClassIdKey]
 
-    val passMark = 40
-
-    val studentPassCount = marksListAverageMark.filter(data => data.average > passMark)
+    val studentPassCount = marksListAverageMark.filter(data => data.average > passAverage)
       .groupByKey(x => (x.subject_id, x.class_id))
       .agg(functions.count("student_id").as("student_pass").as[Int])
       .select($"key._1".as("subject_id").as[Int],$"key._2".as("class_id").as[Int],$"student_pass".as[Int])

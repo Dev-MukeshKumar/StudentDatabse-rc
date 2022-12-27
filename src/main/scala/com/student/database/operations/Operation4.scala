@@ -1,7 +1,8 @@
 package com.student.database.operations
 
 import data.models._
-import data.constants.Constants._
+import data.constants.CassandraConstants._
+import data.constants.OperationConstants._
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{Dataset, SparkSession}
 import org.apache.spark.sql.functions._
@@ -29,17 +30,14 @@ object Operation4 {
 
     val testWiseAverageMark = testWiseMarks.groupByKey(x=>(x.student_id,x.test_id))
       .agg(avg("mark").as("average_marks").as[Double])
-      .select($"key._1".as("student_id").as[Int],$"key._2".as("test_id").as[Int],$"average_marks".as[Double])
-      .as[StudentTestAverage]
       .cache()
 
-    val totalAverageOfStudent = testWiseAverageMark.groupByKey(_.student_id)
+    val totalAverageOfStudent = testWiseAverageMark.groupByKey(_._1._1)
       .agg(avg("average_marks").as("total_average").as[Double])
-      .select($"key".as("student_id").as[Int],col("total_average").as[Double])
 
-    val test1AverageMarks = testWiseAverageMark.filter(data => data.test_id == 1).sort(col("average_marks").desc)
+    val test1AverageMarks = testWiseAverageMark.filter(data => data._1._2 == test1).sort(col("average_marks").desc)
 
-    val test2AverageMarks = testWiseAverageMark.filter(data => data.test_id == 2).sort(col("average_marks").desc)
+    val test2AverageMarks = testWiseAverageMark.filter(data => data._1._2 == test2).sort(col("average_marks").desc)
 
     println(s"Top 3 in test 1 and test 2 of class $className")
     test1AverageMarks.show(3)
@@ -73,7 +71,7 @@ object Operation4 {
     print("Class name: ")
     val className = Try(readLine())
     className match {
-      case Success(value) if value.toUpperCase == "XII" || value.toUpperCase == "XI" => value.toUpperCase
+      case Success(value) if value.toUpperCase == classXII || value.toUpperCase == classXI => value.toUpperCase
       case Success(value) =>
         println("Please enter a valid class from the list!")
         getClassName

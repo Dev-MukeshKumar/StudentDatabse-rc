@@ -1,6 +1,6 @@
 package data.constants
 
-object Constants {
+object CassandraConstants {
 
   //keyspace name
   val keySpaceName = "assignment2"

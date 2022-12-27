@@ -1,5 +1,7 @@
 package com.student.database.operations
 
+import data.constants.CassandraConstants._
+import data.constants.OperationConstants._
 import data.models._
 import org.apache.log4j.Logger
 import org.apache.spark.sql._
@@ -22,8 +24,8 @@ object Operation1 {
   = {
     //get students details and subjects related to the group ID
     val studentData = getStudent(spark,logger)
-    val subjectList = subjectsGroupMapper.get(studentData.group_id.getOrElse(0)).getOrElse(List.empty)
-    val mathSubjectId = subjects.find(x => x._2 == "Maths").get._1
+    val subjectList = subjectsGroupMapper.getOrElse(studentData.group_id.getOrElse(0),List.empty)
+    val mathSubjectId = subjects.find(x => x._2 == subjectMath).get._1
 
     //check for student data then display and repeat operation based on conditions
     if(studentData.student_id.getOrElse(0) == 0) executeOperation1(spark,logger,subjects,classes,groups,subjectsGroupMapper,classesGroupMapper)
@@ -34,18 +36,18 @@ object Operation1 {
     }
     else {
       displayStudent(studentData,groups,subjects,classes,subjectsGroupMapper)
-      val avgMath = getMathTestAvgScore(spark,logger,studentData.student_id.get)
-      println(s"Average of Math test score: ${avgMath}")
+      val avgMath = getMathTestAvgScore(spark,logger,studentData.student_id.get,mathSubjectId,studentData.class_id.get,studentData.group_id.get)
+      println(s"Average of Math test score: $avgMath")
     }
   }
 
   //utility functions
   @tailrec
-  private def getStudent(spark: SparkSession,logger: Logger,id: Int = getStudentId()): Student = {
+  private def getStudent(spark: SparkSession,logger: Logger,id: Int = getStudentId): Student = {
     import spark.implicits._
 
     val readData = spark.read.format("org.apache.spark.sql.cassandra")
-      .options(Map("keyspace" -> "assignment2", "table" -> "students"))
+      .options(Map("keyspace" -> keySpaceName, "table" -> studentsTable))
       .load
       .where(s"student_id=$id")
       .as[Student]
@@ -58,13 +60,13 @@ object Operation1 {
     else readData(0)
   }
 
-  private def getMathTestAvgScore(spark: SparkSession, logger: Logger, id: Int):Double  = {
+  private def getMathTestAvgScore(spark: SparkSession, logger: Logger, id: Int,mathSubjectId:Int,classId:Int,groupId:Int):Double  = {
     import spark.implicits._
 
     val readData = spark.read.format("org.apache.spark.sql.cassandra")
       .options(Map("keyspace" -> "assignment2", "table" -> "marks"))
       .load
-      .where(s"subject_id=2 and student_id=$id")
+      .where(s"group_id=$groupId and class_id=$classId and subject_id=$mathSubjectId and student_id=$id")
       .as[Mark].take(1)
 
     println(readData(0).test_marks.getOrElse(Map()))
@@ -81,32 +83,30 @@ object Operation1 {
 
   private def displayStudent(data:Student,groups:Map[Int,String],subjects:Map[Int,String],classes: Map[Int,String],subjectsGroupMapper:Map[Int,List[Int]]): Unit={
     println(s"name: ${data.firstname.getOrElse("").capitalize} ${data.lastname.getOrElse("")}")
-    println(s"Group: ${groups.get(data.group_id.get).getOrElse("")}")
-    println(s"Class: ${classes.get(data.class_id.get).getOrElse("")}")
+    println(s"Group: ${groups.getOrElse(data.group_id.get,"")}")
+    println(s"Class: ${classes.getOrElse(data.class_id.get,"")}")
     displaySubjects(data.group_id.getOrElse(0),subjectsGroupMapper:Map[Int,List[Int]],subjects:Map[Int,String])
   }
 
   def displaySubjects(groupId:Int,subjectsGroupMapper:Map[Int,List[Int]],subjects:Map[Int,String]):Unit = {
-    val subjectsList = subjectsGroupMapper.get(groupId).getOrElse(List.empty).map(subjectId => subjects.get(subjectId))
+    val subjectsList = subjectsGroupMapper.getOrElse(groupId,List.empty).map(subjectId => subjects.get(subjectId))
     println("Subjects: ")
     subjectsList.foreach(data => println("->"+data.getOrElse("")))
     println()
   }
 
   @tailrec
-  private def getStudentId(): Int = {
+  private def getStudentId: Int = {
     print("Student ID: ")
     val pinCode = Try(readInt())
     pinCode match {
       case Success(value) if value>=1 && value<=900 => value
-      case Success(value) if !value.toString.matches("^[1-9][0-9]{5}$") => {
+      case Success(value) if !value.toString.matches("^[1-9][0-9]{5}$") =>
         println("Please enter an ID between 1 to 900!")
-        getStudentId()
-      }
-      case Failure(exception) => {
+        getStudentId
+      case Failure(exception) =>
         println("Please enter numbers only!")
-        getStudentId()
-      }
+        getStudentId
     }
   }
 }

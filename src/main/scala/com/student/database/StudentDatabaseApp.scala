@@ -1,13 +1,13 @@
 package com.student.database
 
-import com.student.database.operations.Operation1._
+import com.student.database.operations.Operation1.executeOperation1
 import com.student.database.operations.Operation2.executeOperation2
 import com.student.database.operations.Operation3.executeOperation3
 import com.student.database.operations.Operation4.executeOperation4
 import com.student.database.operations.Operation5.executeOperation5
 import com.student.database.operations.Operation6.executeOperation6
 import data.models._
-import data.constants.Constants._
+import data.constants.CassandraConstants._
 import org.apache.log4j.Logger
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession

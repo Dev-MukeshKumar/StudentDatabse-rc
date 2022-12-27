@@ -2,11 +2,12 @@ package com.student.database.operations
 
 import com.datastax.spark.connector.toRDDFunctions
 import data.models._
-import data.constants.Constants._
+import data.constants.CassandraConstants._
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{Dataset, SparkSession}
 
 import scala.annotation.tailrec
+import scala.io.StdIn.readInt
 import scala.util.{Failure, Success, Try}
 import java.time.LocalDate
 
@@ -27,7 +28,7 @@ object Operation5 {
     println("Student data to be moved to history:")
     studentToDelete.show()
 
-    val studentData = studentToDelete.take(1)(0)
+    val studentData = studentToDelete.head()
 
     val studentId = studentData.student_id.getOrElse(0)
     val classId = studentData.class_id.getOrElse(0)
@@ -58,7 +59,7 @@ object Operation5 {
   }
 
   @tailrec
-  private def getStudent(spark: SparkSession, logger: Logger, classIds:String, groupIds:String, id: Int=getStudentId()): Dataset[Student] = {
+  private def getStudent(spark: SparkSession, logger: Logger, classIds:String, groupIds:String, id: Int=getStudentId): Dataset[Student] = {
     import spark.implicits._
 
     val readData = spark.read.format("org.apache.spark.sql.cassandra")
@@ -69,25 +70,23 @@ object Operation5 {
 
     if (readData.count() == 0) {
       logger.info(s"Student with ID: $id not found!")
-      getStudent(spark,logger,classIds,groupIds,getStudentId())
+      getStudent(spark,logger,classIds,groupIds,getStudentId)
     }
     else readData
   }
 
   @tailrec
-  private def getStudentId(): Int = {
+  private def getStudentId: Int = {
     print("Student ID: ")
     val pinCode = Try(readInt())
     pinCode match {
       case Success(value) if value >= 1 && value <= 900 => value
-      case Success(value) if !value.toString.matches("^[1-9][0-9]{5}$") => {
+      case Success(value) if !value.toString.matches("^[1-9][0-9]{5}$") =>
         println("Please enter an ID between 1 to 900!")
-        getStudentId()
-      }
-      case Failure(exception) => {
+        getStudentId
+      case Failure(exception) =>
         println("Please enter numbers only!")
-        getStudentId()
-      }
+        getStudentId
     }
   }
 

@@ -1,2 +1,4 @@
-22/12/23 18:14:01 INFO DataGenerationApp$: Started DummyDataApp!
-22/12/23 18:14:09 INFO DataGenerationApp$: Stopped DummyDataApp!
+22/12/27 15:33:27 INFO StudentDatabaseApp$: Started Student database App!
+22/12/27 15:33:37 INFO StudentDatabaseApp$: menu printed
+22/12/27 15:34:34 INFO StudentDatabaseApp$: menu printed
+22/12/27 15:34:36 INFO StudentDatabaseApp$: Stopped Student database App!
